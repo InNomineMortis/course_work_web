@@ -1,6 +1,6 @@
 import tkinter as tk
 
-from tkinter import ttk
+from tkinter import ttk, filedialog
 
 
 def create_window():
@@ -112,8 +112,43 @@ def create_chat_window(username):
     chat_text.config(state="disabled")
     users_box = tk.Text(chat, width=22, height=18)
     users_box.grid(row=0, column=1)
-    users_box.config(state="disabled")
     chat_send = tk.Text(chat, width=76, height=2)
-    chat_send.grid(row=1, column=0, columnspan=2)
-    tk.Button(chat, text="Разёединить")
+    chat_send.grid(row=1, column=0, columnspan=2, rowspan=2)
+
+    def exit():
+        chat.destroy()
+
+    def save():
+        file_path = filedialog.askdirectory()
+        if len(file_path) == 0:
+            return
+        f = open(file_path + "/history.txt", "x")
+        text = chat_text.get()
+        f.write(text)
+        f.close()
+
+    def send():
+        text = chat_send.get('1.0', 'end-1c')
+        chat_text.config(state="normal")
+        msg = username + '> ' + text + '\n'
+        chat_text.insert(tk.END, msg)
+        chat_text.config(state="disabled")
+        chat_send.delete('1.0', 'end-1c')
+
+    # def connect():
+    #
+    # def disconnect():
+
+    def callback(event, tag):
+        print(event.widget.get('%s.first' % tag, '%s.last' % tag))
+
+    users_box.tag_config("tag", foreground="#0000ff")
+    users_box.tag_bind("tag", "<Button-1>", lambda e: callback(e, "tag"))
+    users_box.insert(tk.END, '<' + username + '>', "tag")
+    users_box.config(state="disabled")
+    ds = tk.Button(chat, text="Разъединить", state="disabled").place(x=160, y=380)
+    join = tk.Button(chat, text="Подключиться").place(x=10, y=380)
+    exit = tk.Button(chat, text="Выход", command=exit).place(x=550, y=380)
+    send = tk.Button(chat, text="Отправить", command=send).place(x=400, y=380)
+    history = tk.Button(chat, text="История", command=save).place(x=300, y=380)
     chat.mainloop()
