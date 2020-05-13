@@ -1,6 +1,6 @@
 from random import random
 from typing import Tuple, Dict
-
+from client import physical
 
 def xor_div(num: int, div: int) -> int:
     copy_div = div
@@ -74,11 +74,11 @@ def split(s: str, chunk_size: int = 4):
     return [int(s[i:i + chunk_size], 2) for i in range(0, chunks, chunk_size)]
 
 
-def main():
+def send(test_str: str):
     coder = Coder()
-    test_str = "Привет, мой дорогой друг. Я пришел тебе сказать, что я тебе очень рад."
     res = ''.join("{:0>16b}".format(ord(i)) for i in test_str)
     encoded = ''.join([coder.encode(x) for x in split(res)])
+    physical.
     decoded = ''.join([coder.decode(x)[0] for x in split(encoded, 7)])
 
     for i in range(16):
@@ -96,10 +96,6 @@ def main():
     print("Encoded: {}".format(encoded))
     print("Decoded: {}".format(decoded))
     print("Decoded Message: {}".format(''.join([chr(x) for x in split(decoded, 16)])))
-
-
-if __name__ == '__main__':
-    main()
 
 # 001 - 0000001
 # 010 - 0000010

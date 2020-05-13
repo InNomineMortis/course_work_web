@@ -1,7 +1,8 @@
 import tkinter as tk
 
 from tkinter import ttk, filedialog
-
+from client import physical
+from client import data_link
 
 def create_window():
     window = tk.Tk()
@@ -131,13 +132,16 @@ def create_chat_window(username):
         text = chat_send.get('1.0', 'end-1c')
         chat_text.config(state="normal")
         msg = username + '> ' + text + '\n'
+        data_link.send(text)
         chat_text.insert(tk.END, msg)
         chat_text.config(state="disabled")
         chat_send.delete('1.0', 'end-1c')
 
-    # def connect():
-    #
-    # def disconnect():
+
+    def connect():
+        physical.button_open()
+
+   # def disconnect():
 
     def callback(event, tag):
         print(event.widget.get('%s.first' % tag, '%s.last' % tag))
@@ -147,7 +151,7 @@ def create_chat_window(username):
     users_box.insert(tk.END, '<' + username + '>', "tag")
     users_box.config(state="disabled")
     ds = tk.Button(chat, text="Разъединить", state="disabled").place(x=160, y=380)
-    join = tk.Button(chat, text="Подключиться").place(x=10, y=380)
+    join = tk.Button(chat, text="Подключиться", command=connect).place(x=10, y=380)
     exit = tk.Button(chat, text="Выход", command=exit).place(x=550, y=380)
     send = tk.Button(chat, text="Отправить", command=send).place(x=400, y=380)
     history = tk.Button(chat, text="История", command=save).place(x=300, y=380)

@@ -8,3 +8,8 @@ def button_open():
     pc.open()
     pc.port = value.DEFAULT_PORT_2
     pc.open()
+
+
+def input(text):
+    pc = serial.Serial()
+    pc.write()
