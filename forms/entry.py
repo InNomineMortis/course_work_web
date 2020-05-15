@@ -429,8 +429,9 @@ def change_status(decoded):
         text = chat_text_2.get('1.0', tk.END)
         # chat_text_2.insert(tk.END, username + '> ' + text[:-2] + '\n')
         index = text.find('Отправлено')
-        res = text[:index] + 'Прочитано' + text[index + 10:]
-        print('text[:index]: ', text[:index], 'index: ', index, 'text[index+10:]: ', text[index + 10:], 'res: ', res)
+        res = text[:index] + 'Прочитано' + text[index + 10:-1]
+        print('text[:index]: ', text[:index], 'index: ', index, 'text[index+10:-2]: ', text[index + 10:-1], 'res: ',
+              res)
         chat_text_2.delete('1.0', tk.END)
         chat_text_2.insert('1.0', res)
         chat_text_2.config(state=tk.DISABLED)
