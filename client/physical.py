@@ -19,60 +19,83 @@ def button_open(com_1, com_2, nick):
     port_2.open()
     res = str.encode('users,' + nick + '\r')
     time.sleep(1)
-    port_2.write(res)
+    if port_2.port == '/dev/ttyS20':
+        port_2.write(res)
+        print('sent', res)
     print(port_1, 'com_1: ', com_1)
     print(port_2, 'com_2: ', com_2)
     global thread
-    thread = threading.Thread(target=check_connection, args=(nick,))
+    thread = threading.Thread(target=check_connection, args=(nick,), daemon=True)
+    time.sleep(1)
     thread.start()
 
 
-def button_close(com_1, com_2):
-    port_1 = serial.Serial()
-    port_2 = serial.Serial()
-    port_1.port = com_1
-    port_2.port = com_2
+def button_close():
+    global user_list
+    user_list = []
     port_1.close()
     port_2.close()
     print(port_1)
     print(port_2)
 
 
+user_list = []
+
+
 def check_connection(username):
+    global user_list
     users_list = []
+    count = 0
     flag = False
-    users_str = 'users'
-    strs = ''
+    same = False
+    print('In thread', port_1)
     while True:
+        strs = ''
+        users_str = ''
         time.sleep(5)
+        print(port_1.is_open, port_2.is_open)
+        if not port_1.is_open or count == 3:
+            port_1.close()
+            port_2.close()
+            entry.disconnected()
+            break
         while True:
             reading = port_1.read(1)
-            if reading == b'\r':
+            if reading == b'\r' or reading == b'':
                 break
             else:
                 strs += reading.decode()
         print_data('got:', strs)
         if len(strs) != 0:
+            count = 0
             if strs[0:5] == 'users':
                 users = strs.split(',')
                 try:
                     users.index(username)
                 except ValueError:
                     users.append(username)
-                print(users)
+                print('users in phys:', users)
                 if len(users) != len(users_list):
-                    users_list = users
+                    users_list = users.copy()
                     flag = True
                     del users[0]
                     entry.users_update(users)
+                else:
+                    same = True
         print('user-list', users_list)
-        if flag:
+        if same:
+            same = False
+            port_2.write(str.encode(strs + '\r'))
+        elif flag:
             for i in users_list:
-                users_str += ',' + i
+                flag = False
+                users_str += i + ','
+            users_str = users_str[0:len(users_str) - 1]
             print(users_str)
-            port_2.write(str.encode(users_str))
+            port_2.write(str.encode(users_str + '\r'))
         else:
-            port_2.write(str.encode(users_str + ',' + username))
+            count += 1
+        print('count: ', count)
 
 
 def print_data(data, data_1):

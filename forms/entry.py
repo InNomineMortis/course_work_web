@@ -5,6 +5,7 @@ from client import physical
 from client import data_link
 from serial.tools import list_ports
 from forms.values import BAUDRATES, BYTESIZES, PARITIES, STOPBITS
+from functools import partial
 
 cut_port = []
 shown_users = []
@@ -149,16 +150,24 @@ def create_window():
     window.mainloop()
 
 
+nick = ''
+
+
 def create_chat_window(username, com_1, com_2):
+    global nick
+    nick = username
     chat = tk.Tk()
     chat.geometry("640x480")
     chat.title("Chat, user: " + username)
-    global chat_text
-    chat_text = tk.Text(chat, width=56, height=18)
-    chat_text.grid(row=0, column=0)
-    chat_text.insert(tk.END, "Чат с пользователем: <Имя_1> \n")
-    chat_text.insert(tk.END, "Имя_1> Привет! \n")
-    chat_text.config(state="disabled")
+    global chat_text_1, chat_text_2
+    chat_text_1 = tk.Text(chat, width=56, height=18)
+    chat_text_1.grid(row=0, column=0)
+    chat_text_2 = tk.Text(chat, width=56, height=18)
+    chat_text_2.grid(row=0, column=0)
+    # chat_text.insert(tk.END, "Чат с пользователем: <Имя_1> \n")
+    # chat_text.insert(tk.END, "Имя_1> Привет! \n")
+    chat_text_1.config(state="disabled")
+    chat_text_2.config(state="disabled")
     global users_box
     users_box = tk.Text(chat, width=22, height=18)
     users_box.grid(row=0, column=1)
@@ -168,27 +177,32 @@ def create_chat_window(username, com_1, com_2):
     chat_send.grid(row=1, column=0, columnspan=2, rowspan=2)
 
     def exit():
-        physical.button_close(com_1, com_2)
+        physical.button_close()
         chat.destroy()
 
-    def save():
+    def save(user):
         file_path = filedialog.askdirectory()
         if len(file_path) == 0:
             return
         f = open(file_path + "/history.txt", "x")
-        text = chat_text.get('1.0', tk.END)
+        if chat_users.index(user) == 0:
+            text = chat_text_1.get('1.0', tk.END)
+        elif chat_users.index(user) == 1:
+            text = chat_text_2.get('1.0', tk.END)
+        else:
+            text = 'Error'
         f.write(text)
         f.close()
 
-    def send():
+    def send(user):
         text = chat_send.get('1.0', 'end-1c')
-        chat_text.config(state="normal")
-        msg = username + '> ' + text + ' <Доставлено>' + '\n'
-        data_link.send(text)
-        chat_text.insert(tk.END, msg)
-        chat_text.config(state="disabled")
-        data_link.send(msg)
-        chat_send.delete('1.0', 'end-1c')
+        if chat_users.index(user) == 0:
+            chat_text_1.config(state="normal")
+            msg = 'msg' + user + nick + text + '\r'
+            chat_text_1.insert(tk.END, nick + '> ' + text + '(Отправлено)')
+            chat_text_1.config(state="disabled")
+            data_link.send(msg)
+            chat_send.delete('1.0', 'end-1c')
 
     def connect(e):
         physical.button_open(com_1, com_2, username)
@@ -197,24 +211,31 @@ def create_chat_window(username, com_1, com_2):
         ds.config(state=tk.NORMAL)
 
     def disconnect(e):
-        physical.button_close(com_1, com_2)
+        physical.button_close()
         status.config(text='Статус: Отключено', fg='red')
         e.widget.config(state=tk.DISABLED)
         jn.config(state=tk.NORMAL)
+
+        users_box.config(state=tk.NORMAL)
+        users_box.delete('1.0', tk.END)
+        users_box.config(state=tk.DISABLED)
 
     # users_box.tag_config("tag", foreground="#0000ff")
     # users_box.tag_bind("tag", "<Button-1>", lambda e: callback(e, "tag"))
     # users_box.insert(tk.END, '<' + username + '>', "tag")
     users_box.config(state="disabled")
+    global ds
     ds = tk.Button(chat, text="Разъединить", state="disabled")
     ds.bind("<Button-1>", disconnect)
     ds.place(x=160, y=400)
+    global jn
     jn = tk.Button(chat, text="Подключиться", state="normal")
     jn.bind("<Button-1>", connect)
     jn.place(x=10, y=400)
     exit = tk.Button(chat, text="Выход", command=exit).place(x=550, y=400)
-    send = tk.Button(chat, text="Отправить", command=send).place(x=400, y=400)
+    send = tk.Button(chat, text="Отправить", command=partial(send, send_to)).place(x=400, y=400)
     history = tk.Button(chat, text="История", command=save).place(x=300, y=400)
+    global status
     status = tk.Label(chat, text='Статус: Отключено', fg='red')
     status.place(x=10, y=370)
     chat.mainloop()
@@ -222,29 +243,133 @@ def create_chat_window(username, com_1, com_2):
 
 def connected(res):
     users_box.config(state=tk.NORMAL)
+    if len(chat_users) == 2:
+        status.config(text='Статус: Подключено', fg='green')
     users_box.insert(tk.END, res)
     users_box.config(state=tk.DISABLED)
 
 
-def receive(decoded):
-    chat_text.config(state=tk.NORMAL)
-    chat_text.insert(tk.END, 'User' + decoded)
-    chat_text.config(state=tk.DISABLED)
+chat_users = []
+
+
+def receive(decoded: str):
+    global chat_users
+    splitted = decoded.split(',')
+    user = chat_users.index(splitted[2])
+    if user == 0:
+        chat_text_2.config(state=tk.NORMAL)
+        chat_text_2.grid_remove()
+        chat_text_2.config(state=tk.DISABLED)
+        chat_text_1.config(state=tk.NORMAL)
+        chat_text_1.grid(row=0, column=0)
+        chat_text_1.insert(tk.END, 'User' + decoded)
+        chat_text_1.config(state=tk.DISABLED)
+    elif user == 1:
+        chat_text_1.config(state=tk.NORMAL)
+        chat_text_1.grid_remove()
+        chat_text_1.config(state=tk.DISABLED)
+        chat_text_2.config(state=tk.NORMAL)
+        chat_text_2.grid(row=0, column=0)
+        chat_text_2.insert(tk.END, 'User' + decoded)
+        chat_text_2.config(state=tk.DISABLED)
+
+
+send_to = ''
+chat_1_open = False
+chat_2_open = False
+first_open = False
+second_open = False
 
 
 def callback(event, tag):
-    print(event.widget.get('%s.first' % tag, '%s.last' % tag))
+    global send_to, chat_text_1, chat_text_2, nick, first, chat_1_open, chat_2_open, second_open, first_open
+    print(event)
+    send_to = tag[3:]
+    print('send_to', send_to, 'chat_users: ', chat_users)
+    try:
+        print(chat_users.index(send_to))
+    except ValueError:
+        print(tag[3:])
+        return
+    index = chat_users.index(send_to)
+    if index == 1:
+        chat_text_2.config(state=tk.NORMAL)
+        chat_text_2.grid_remove()
+        chat_text_2.config(state=tk.DISABLED)
+        if not chat_1_open:
+            chat_1_open = True
+            chat_2_open = False
+            chat_text_1.config(state=tk.NORMAL)
+            chat_text_1.insert(tk.END, 'Чат с пользователем: <' + send_to + '>')
+            chat_text_1.config(state=tk.DISABLED)
+            chat_text_1.grid(row=0, column=0)
+    if index == 0:
+        chat_text_1.config(state=tk.NORMAL)
+        chat_text_1.grid_remove()
+        chat_text_1.config(state=tk.DISABLED)
+        if not chat_2_open:
+            chat_2_open = True
+            chat_1_open = False
+            chat_text_2.config(state=tk.NORMAL)
+            chat_text_2.insert(tk.END, 'Чат с пользователем: <' + send_to + '>')
+            chat_text_2.config(state=tk.DISABLED)
+        chat_text_2.grid(row=0, column=0)
+
+
+count = 0
+first = ''
+second = ''
+third = ''
 
 
 def users_update(users: list):
-    global shown_users
+    global count, first, second, third
+    count = 0
+    global shown_users, chat_users, nick
     if len(users) != len(shown_users):
+        users_box.config(state=tk.NORMAL)
+        users_box.delete('1.0', tk.END)
         print('users-update', users, shown_users)
         for i in users:
             print(i)
-            users_box.config(state=tk.NORMAL)
-            users_box.tag_config("tag" + i, foreground="#0000ff")
-            users_box.tag_bind("tag" + i, "<Button-1>", lambda e: callback(e, "tag"))
-            users_box.insert(tk.END, '<' + i + '>\n', "tag")
-            users_box.config(state=tk.DISABLED)
-        shown_users = users
+            count += 1
+            if count == 1:
+                users_box.tag_config("tag" + i, foreground="blue")
+                first = i
+                tag_1 = users_box.tag_bind("tag" + i, "<Button-1>", lambda e: callback(e, "tag" + first))
+            if count == 2:
+                users_box.tag_config("tag" + i, foreground="green")
+                second = i
+                tag_2 = users_box.tag_bind("tag" + i, "<Button-1>", lambda e: callback(e, "tag" + second))
+            if count == 3:
+                users_box.tag_config("tag" + i, foreground="red")
+                third = i
+                tag_3 = users_box.tag_bind("tag" + i, "<Button-1>", lambda e: callback(e, "tag" + third))
+            row = len(users_box.get('1.0', tk.END))
+            users_box.insert(tk.END, '<' + i + '>\n', "tag" + i)
+
+            start = users_box.index('1.0+%d chars' % row)
+            end = users_box.index('1.0+%d chars' % (row + len(i) - 2))
+            print('start: ', start, 'end: ', end, 'row: ', row)
+            users_box.tag_add('tag' + i, start, end)
+        users_box.config(state=tk.DISABLED)
+        shown_users = users.copy()
+        chat_users = shown_users.copy()
+        if len(shown_users) == 3:
+            status.config(text='Статус: Соединение установлено', fg='green')
+        del chat_users[chat_users.index(nick)]
+
+
+def disconnected():
+    jn.config(state=tk.NORMAL)
+    chat_text_1.config(state=tk.NORMAL)
+    chat_text_2.config(state=tk.NORMAL)
+    chat_text_1.insert(tk.END, 'SYSTEM> Соединение разорвано\n')
+    chat_text_2.insert(tk.END, 'SYSTEM> Соединение разорвано\n')
+    chat_text_1.config(state=tk.DISABLED)
+    chat_text_2.config(state=tk.DISABLED)
+    users_box.config(state=tk.NORMAL)
+    users_box.delete('1.0', tk.END)
+    users_box.config(state=tk.DISABLED)
+    ds.config(state=tk.DISABLED)
+    status.config(text='Статус: Отключено', fg='red')
