@@ -180,14 +180,14 @@ def create_chat_window(username, com_1, com_2):
         physical.button_close()
         chat.destroy()
 
-    def save(user):
+    def save():
         file_path = filedialog.askdirectory()
         if len(file_path) == 0:
             return
         f = open(file_path + "/history.txt", "x")
-        if chat_users.index(user) == 0:
+        if chat_users.index(send_to) == 1:
             text = chat_text_1.get('1.0', tk.END)
-        elif chat_users.index(user) == 1:
+        elif chat_users.index(send_to) == 0:
             text = chat_text_2.get('1.0', tk.END)
         else:
             text = 'Error'

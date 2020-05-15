@@ -19,7 +19,7 @@ def button_open(com_1, com_2, nick):
     port_2.open()
     res = str.encode('PERM,' + nick + '\r')
     time.sleep(1)
-    if port_2.port == '/dev/ttyS20':
+    if port_2.port == '/dev/ttyS20' or port_2.port == 'COM2':
         port_2.write(res)
         print('sent', res)
     print(port_1, 'com_1: ', com_1)
