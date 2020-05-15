@@ -194,12 +194,19 @@ def create_chat_window(username, com_1, com_2):
         f.write(text)
         f.close()
 
-    def send(user):
+    def send():
         text = chat_send.get('1.0', 'end-1c')
-        if chat_users.index(user) == 0:
+        if chat_users.index(send_to) == 0:
+            msg = send_to + ',' + nick + ',' + text + '\r'
+            chat_text_2.config(state="normal")
+            chat_text_2.insert(tk.END, nick + '> ' + text + '(Отправлено)\n')
+            chat_text_2.config(state="disabled")
+            data_link.send(msg)
+            chat_send.delete('1.0', 'end-1c')
+        if chat_users.index(send_to) == 1:
+            msg = send_to + ',' + nick + ',' + text + '\r'
             chat_text_1.config(state="normal")
-            msg = 'msg' + user + nick + text + '\r'
-            chat_text_1.insert(tk.END, nick + '> ' + text + '(Отправлено)')
+            chat_text_1.insert(tk.END, nick + '> ' + text + '(Отправлено)\n')
             chat_text_1.config(state="disabled")
             data_link.send(msg)
             chat_send.delete('1.0', 'end-1c')
@@ -233,7 +240,9 @@ def create_chat_window(username, com_1, com_2):
     jn.bind("<Button-1>", connect)
     jn.place(x=10, y=400)
     exit = tk.Button(chat, text="Выход", command=exit).place(x=550, y=400)
-    send = tk.Button(chat, text="Отправить", command=partial(send, send_to)).place(x=400, y=400)
+    global sd
+    sd = tk.Button(chat, text="Отправить", command=send, state=tk.DISABLED)
+    sd.place(x=400, y=400)
     history = tk.Button(chat, text="История", command=save).place(x=300, y=400)
     global status
     status = tk.Label(chat, text='Статус: Отключено', fg='red')
@@ -252,33 +261,56 @@ def connected(res):
 chat_users = []
 
 
-def receive(decoded: str):
-    global chat_users
-    splitted = decoded.split(',')
-    user = chat_users.index(splitted[2])
+def receive(decoded: list):
+    global chat_users, chat_1_open, chat_2_open, first_open, second_open, send_to
+    user = chat_users.index(decoded[1])
+    print(decoded)
+    username = chat_users[user]
+    del decoded[0]
+    del decoded[0]
+    print(decoded)
     if user == 0:
-        chat_text_2.config(state=tk.NORMAL)
-        chat_text_2.grid_remove()
-        chat_text_2.config(state=tk.DISABLED)
-        chat_text_1.config(state=tk.NORMAL)
-        chat_text_1.grid(row=0, column=0)
-        chat_text_1.insert(tk.END, 'User' + decoded)
-        chat_text_1.config(state=tk.DISABLED)
-    elif user == 1:
+        print('user 0', user)
         chat_text_1.config(state=tk.NORMAL)
         chat_text_1.grid_remove()
         chat_text_1.config(state=tk.DISABLED)
         chat_text_2.config(state=tk.NORMAL)
-        chat_text_2.grid(row=0, column=0)
-        chat_text_2.insert(tk.END, 'User' + decoded)
+        if first_open:
+            chat_text_2.insert(tk.END, 'Чат с пользователем: <' + username + '>\n')
+            first_open = False
+        text = ''.join([str(elem) for elem in decoded]) + '\n'
+        chat_text_2.insert(tk.END, username + '> ' + text[:-2] + '\n')
         chat_text_2.config(state=tk.DISABLED)
+        if not chat_2_open:
+            chat_2_open = True
+            chat_1_open = False
+            send_to = username
+            chat_text_2.grid(row=0, column=0)
+
+    elif user == 1:
+        chat_text_2.config(state=tk.NORMAL)
+        chat_text_2.grid_remove()
+        chat_text_2.config(state=tk.DISABLED)
+        chat_text_1.config(state=tk.NORMAL)
+        if second_open:
+            chat_text_1.insert(tk.END, 'Чат с пользователем: <' + username + '>\n')
+            second_open = False
+        text = ''.join([str(elem) for elem in decoded]) + '\n'
+        chat_text_1.insert(tk.END, username + '> ' + text[:-2] + '\n')
+        chat_text_1.config(state=tk.DISABLED)
+        if not chat_1_open:
+            chat_1_open = True
+            chat_2_open = False
+            send_to = username
+            chat_text_1.grid(row=0, column=0)
+        print('user 1', user)
 
 
 send_to = ''
 chat_1_open = False
 chat_2_open = False
-first_open = False
-second_open = False
+first_open = True
+second_open = True
 
 
 def callback(event, tag):
@@ -299,9 +331,11 @@ def callback(event, tag):
         if not chat_1_open:
             chat_1_open = True
             chat_2_open = False
-            chat_text_1.config(state=tk.NORMAL)
-            chat_text_1.insert(tk.END, 'Чат с пользователем: <' + send_to + '>')
-            chat_text_1.config(state=tk.DISABLED)
+            if second_open:
+                chat_text_1.config(state=tk.NORMAL)
+                chat_text_1.insert(tk.END, 'Чат с пользователем: <' + send_to + '>\n')
+                chat_text_1.config(state=tk.DISABLED)
+                second_open = False
             chat_text_1.grid(row=0, column=0)
     if index == 0:
         chat_text_1.config(state=tk.NORMAL)
@@ -310,10 +344,12 @@ def callback(event, tag):
         if not chat_2_open:
             chat_2_open = True
             chat_1_open = False
-            chat_text_2.config(state=tk.NORMAL)
-            chat_text_2.insert(tk.END, 'Чат с пользователем: <' + send_to + '>')
-            chat_text_2.config(state=tk.DISABLED)
-        chat_text_2.grid(row=0, column=0)
+            if first_open:
+                chat_text_2.config(state=tk.NORMAL)
+                chat_text_2.insert(tk.END, 'Чат с пользователем: <' + send_to + '>\n')
+                chat_text_2.config(state=tk.DISABLED)
+                first_open = False
+            chat_text_2.grid(row=0, column=0)
 
 
 count = 0
@@ -356,14 +392,17 @@ def users_update(users: list):
         shown_users = users.copy()
         chat_users = shown_users.copy()
         if len(shown_users) == 3:
+            sd.config(state=tk.NORMAL)
             status.config(text='Статус: Соединение установлено', fg='green')
         del chat_users[chat_users.index(nick)]
 
 
 def disconnected():
+    global shown_users, chat_users
     jn.config(state=tk.NORMAL)
     chat_text_1.config(state=tk.NORMAL)
     chat_text_2.config(state=tk.NORMAL)
+    sd.config(state=tk.DISABLED)
     chat_text_1.insert(tk.END, 'SYSTEM> Соединение разорвано\n')
     chat_text_2.insert(tk.END, 'SYSTEM> Соединение разорвано\n')
     chat_text_1.config(state=tk.DISABLED)
@@ -372,4 +411,50 @@ def disconnected():
     users_box.delete('1.0', tk.END)
     users_box.config(state=tk.DISABLED)
     ds.config(state=tk.DISABLED)
+    chat_users = []
+    shown_users = []
     status.config(text='Статус: Отключено', fg='red')
+
+
+def change_status(decoded):
+    global chat_1_open, chat_2_open, send_to
+    user = chat_users.index(decoded)
+    username = chat_users[user]
+    if user == 0:
+        print('user 0', user)
+        chat_text_1.config(state=tk.NORMAL)
+        chat_text_1.grid_remove()
+        chat_text_1.config(state=tk.DISABLED)
+        chat_text_2.config(state=tk.NORMAL)
+        text = chat_text_2.get('1.0', tk.END)
+        # chat_text_2.insert(tk.END, username + '> ' + text[:-2] + '\n')
+        index = text.find('Отправлено')
+        res = text[:index] + 'Прочитано' + text[index + 10:]
+        print('text[:index]: ', text[:index], 'index: ', index, 'text[index+10:]: ', text[index + 10:], 'res: ', res)
+        chat_text_2.delete('1.0', tk.END)
+        chat_text_2.insert('1.0', res)
+        chat_text_2.config(state=tk.DISABLED)
+        if not chat_2_open:
+            chat_2_open = True
+            chat_1_open = False
+            send_to = username
+            chat_text_2.grid(row=0, column=0)
+
+    elif user == 1:
+        chat_text_2.config(state=tk.NORMAL)
+        chat_text_2.grid_remove()
+        chat_text_2.config(state=tk.DISABLED)
+        chat_text_1.config(state=tk.NORMAL)
+        text = chat_text_1.get('1.0', tk.END)
+        index = text.find('Отправлено')
+        res = text[:index] + 'Прочитано' + text[index + 10:]
+        print('text[:index]: ', text[:index], 'index: ', index, 'text[index+10:]: ', text[index + 10:], 'res: ', res)
+        chat_text_1.delete('1.0', tk.END)
+        chat_text_1.insert('1.0', res)
+        chat_text_1.config(state=tk.DISABLED)
+        if not chat_1_open:
+            chat_1_open = True
+            chat_2_open = False
+            send_to = username
+            chat_text_1.grid(row=0, column=0)
+        print('user 1', user)

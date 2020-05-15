@@ -91,6 +91,13 @@ def receive(encoded: str):
     print('received', decoded)
     entry.receive(decoded)
 
+
+def decode(encoded: str):
+    coder = Coder()
+    decoding = ''.join([coder.decode(x)[0] for x in split(encoded, 7)])
+    decoded = ''.join([chr(x) for x in split(decoding, 16)])
+    print('received', decoded)
+    return decoded
     #
     # for i in range(16):
     #     enc = coder.encode(i)

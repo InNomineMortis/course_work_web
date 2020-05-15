@@ -17,7 +17,7 @@ def button_open(com_1, com_2, nick):
     # port_1.setDTR(True)
     port_1.open()
     port_2.open()
-    res = str.encode('users,' + nick + '\r')
+    res = str.encode('PERM,' + nick + '\r')
     time.sleep(1)
     if port_2.port == '/dev/ttyS20':
         port_2.write(res)
@@ -33,10 +33,19 @@ def button_open(com_1, com_2, nick):
 def button_close():
     global user_list
     user_list = []
-    port_1.close()
-    port_2.close()
-    print(port_1)
-    print(port_2)
+    try:
+        port_2.write(str.encode('DOWNLINK\r'))
+    except serial.portNotOpenError:
+        print(port_1)
+        print(port_2)
+        return
+
+    try:
+        port_1.close()
+        port_2.close()
+    except serial.portNotOpenError:
+        print(port_1)
+        print(port_2)
 
 
 user_list = []
@@ -54,7 +63,7 @@ def check_connection(username):
         users_str = ''
         time.sleep(5)
         print(port_1.is_open, port_2.is_open)
-        if not port_1.is_open or count == 3:
+        if not port_1.is_open or count == 6:
             port_1.close()
             port_2.close()
             entry.disconnected()
@@ -68,7 +77,7 @@ def check_connection(username):
         print_data('got:', strs)
         if len(strs) != 0:
             count = 0
-            if strs[0:5] == 'users':
+            if strs[0:4] == 'PERM':
                 users = strs.split(',')
                 try:
                     users.index(username)
@@ -82,6 +91,29 @@ def check_connection(username):
                     entry.users_update(users)
                 else:
                     same = True
+            if strs[0:8] == 'DOWNLINK':
+                port_2.write(str.encode(strs + '\r'))
+                port_2.close()
+                port_1.close()
+                entry.disconnected()
+                break
+            if strs[0:4] == "DATA":
+                encoded = strs.split(',')
+                res = data_link.decode(encoded[1])
+                res = res.split(',')
+                print(res)
+                if res[0] == username:
+                    port_2.write(str.encode("ASK," + username + ',' + res[1] + '\r'))
+                    entry.receive(res)
+                else:
+                    port_2.write(str.encode(strs + '\r'))
+            if strs[0:3] == 'ASK':
+                encoded = strs.split(',')
+                if encoded[2] == username:
+                    entry.change_status(encoded[1])
+                else:
+                    port_2.write(str.encode(strs + '\r'))
+
         print('user-list', users_list)
         if same:
             same = False
@@ -104,7 +136,7 @@ def print_data(data, data_1):
 
 def send(encoded):
     print('sending', str.encode(encoded + '\r'))
-    res = str.encode(encoded + '\r')
+    res = str.encode('DATA,' + encoded + '\r')
     time.sleep(0.1)
     port_2.write(res)
     print('sent')
