@@ -422,7 +422,7 @@ def disconnected():
     status.config(text='Статус: Отключено', fg='red')
 
 
-def change_status(decoded):
+def change_status(decoded, stat):
     global chat_1_open, chat_2_open, send_to
     user = chat_users.index(decoded)
     username = chat_users[user]
@@ -435,7 +435,7 @@ def change_status(decoded):
         text = chat_text_2.get('1.0', tk.END)
         # chat_text_2.insert(tk.END, username + '> ' + text[:-2] + '\n')
         index = text.find('Отправлено')
-        res = text[:index] + 'Прочитано' + text[index + 10:-1]
+        res = text[:index] + stat + text[index + 10:-1]
         print('text[:index]: ', text[:index], 'index: ', index, 'text[index+10:-2]: ', text[index + 10:-1], 'res: ',
               res)
         chat_text_2.delete('1.0', tk.END)
@@ -454,8 +454,8 @@ def change_status(decoded):
         chat_text_1.config(state=tk.NORMAL)
         text = chat_text_1.get('1.0', tk.END)
         index = text.find('Отправлено')
-        res = text[:index] + 'Прочитано' + text[index + 10:]
-        print('text[:index]: ', text[:index], 'index: ', index, 'text[index+10:]: ', text[index + 10:], 'res: ', res)
+        res = text[:index] + stat + text[index + 10:]
+        print('text[:index]: ', text[:index], 'index: ', index, 'text[index+10:]: ', text[index + 10:-1], 'res: ', res)
         chat_text_1.delete('1.0', tk.END)
         chat_text_1.insert('1.0', res)
         chat_text_1.config(state=tk.DISABLED)

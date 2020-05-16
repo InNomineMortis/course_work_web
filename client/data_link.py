@@ -104,7 +104,7 @@ def decode(encoded: str):
         errors = False
     decoded = ''.join([chr(x) for x in split(decoding, 16)])
     print('received', decoded)
-    return decoded
+    return decoded, errors
     #
     # for i in range(16):
     #     enc = coder.encode(i)

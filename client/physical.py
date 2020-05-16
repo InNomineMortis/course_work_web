@@ -108,39 +108,49 @@ def check_connection(username):
                 break
             if strs[0:4] == "DATA":
                 encoded = strs.split(',')
-                res = data_link.decode(encoded[1])
-                # if errors:
-                #     try:
-                #         port_2.write(str.encode("ERROR," + username + ',' + res[1] + '\r'))
-                #     except serial.SerialException:
-                #         entry.disconnected()
-                #         return
-                res = res.split(',')
-                print(res)
-                if res[0] == username:
+                res, errors = data_link.decode(encoded[1])
+                if errors:
                     try:
-                        port_2.write(str.encode("ASK," + username + ',' + res[1] + '\r'))
+                        port_2.write(str.encode("ERROR," + username + ',' + res[1] + '\r'))
                     except serial.SerialException:
                         entry.disconnected()
                         return
-                    entry.receive(res)
                 else:
-                    try:
-                        port_2.write(str.encode(strs + '\r'))
-                    except serial.SerialException:
-                        entry.disconnected()
-                        return
+                    res = res.split(',')
+                    print(res)
+                    if res[0] == username:
+                        try:
+                            port_2.write(str.encode("ASK," + username + ',' + res[1] + '\r'))
+                        except serial.SerialException:
+                            entry.disconnected()
+                            return
+                        entry.receive(res)
+                    else:
+                        try:
+                            port_2.write(str.encode(strs + '\r'))
+                        except serial.SerialException:
+                            entry.disconnected()
+                            return
             if strs[0:3] == 'ASK':
                 encoded = strs.split(',')
                 if encoded[2] == username:
-                    entry.change_status(encoded[1])
+                    entry.change_status(encoded[1], 'Прочитано')
                 else:
                     try:
                         port_2.write(str.encode(strs + '\r'))
                     except serial.SerialException:
                         entry.disconnected()
                         return
-
+            if strs[0:5] == "ERROR":
+                encoded = strs.split(',')
+                if encoded[2] == username:
+                    entry.change_status(encoded[1], 'Ошибка')
+                else:
+                    try:
+                        port_2.write(str.encode(strs + '\r'))
+                    except serial.SerialException:
+                        entry.disconnected()
+                        return
         print('user-list', users_list)
         if same:
             same = False
