@@ -6,7 +6,6 @@ import threading
 from multiprocessing.pool import ThreadPool
 from client import data_link
 
-
 def button_open(com_1, com_2, nick):
     global port_1, port_2
     port_1 = serial.Serial(timeout=0)
@@ -35,7 +34,7 @@ def button_close():
     user_list = []
     try:
         port_2.write(str.encode('DOWNLINK\r'))
-    except serial.portNotOpenError:
+    except serial.SerialException:
         print(port_1)
         print(port_2)
         return
@@ -43,7 +42,7 @@ def button_close():
     try:
         port_1.close()
         port_2.close()
-    except serial.portNotOpenError:
+    except serial.SerialException:
         print(port_1)
         print(port_2)
 
@@ -64,12 +63,18 @@ def check_connection(username):
         time.sleep(5)
         print(port_1.is_open, port_2.is_open)
         if not port_1.is_open or count == 6:
-            port_1.close()
-            port_2.close()
-            entry.disconnected()
-            break
+            try:
+                port_1.close()
+                port_2.close()
+            finally:
+                entry.disconnected()
+                break
         while True:
-            reading = port_1.read(1)
+            try:
+                reading = port_1.read(1)
+            except serial.SerialException:
+                entry.disconnected()
+                return
             if reading == b'\r' or reading == b'':
                 break
             else:
@@ -92,7 +97,11 @@ def check_connection(username):
                 else:
                     same = True
             if strs[0:8] == 'DOWNLINK':
-                port_2.write(str.encode(strs + '\r'))
+                try:
+                    port_2.write(str.encode(strs + '\r'))
+                except serial.SerialException:
+                    entry.disconnected()
+                    return
                 port_2.close()
                 port_1.close()
                 entry.disconnected()
@@ -100,31 +109,57 @@ def check_connection(username):
             if strs[0:4] == "DATA":
                 encoded = strs.split(',')
                 res = data_link.decode(encoded[1])
+                # if errors:
+                #     try:
+                #         port_2.write(str.encode("ERROR," + username + ',' + res[1] + '\r'))
+                #     except serial.SerialException:
+                #         entry.disconnected()
+                #         return
                 res = res.split(',')
                 print(res)
                 if res[0] == username:
-                    port_2.write(str.encode("ASK," + username + ',' + res[1] + '\r'))
+                    try:
+                        port_2.write(str.encode("ASK," + username + ',' + res[1] + '\r'))
+                    except serial.SerialException:
+                        entry.disconnected()
+                        return
                     entry.receive(res)
                 else:
-                    port_2.write(str.encode(strs + '\r'))
+                    try:
+                        port_2.write(str.encode(strs + '\r'))
+                    except serial.SerialException:
+                        entry.disconnected()
+                        return
             if strs[0:3] == 'ASK':
                 encoded = strs.split(',')
                 if encoded[2] == username:
                     entry.change_status(encoded[1])
                 else:
-                    port_2.write(str.encode(strs + '\r'))
+                    try:
+                        port_2.write(str.encode(strs + '\r'))
+                    except serial.SerialException:
+                        entry.disconnected()
+                        return
 
         print('user-list', users_list)
         if same:
             same = False
-            port_2.write(str.encode(strs + '\r'))
+            try:
+                port_2.write(str.encode(strs + '\r'))
+            except serial.SerialException:
+                entry.disconnected()
+                return
         elif flag:
             for i in users_list:
                 flag = False
                 users_str += i + ','
             users_str = users_str[0:len(users_str) - 1]
             print(users_str)
-            port_2.write(str.encode(users_str + '\r'))
+            try:
+                port_2.write(str.encode(users_str + '\r'))
+            except serial.SerialException:
+                entry.disconnected()
+                return
         else:
             count += 1
         print('count: ', count)

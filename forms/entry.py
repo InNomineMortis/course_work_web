@@ -359,7 +359,7 @@ third = ''
 
 
 def users_update(users: list):
-    global count, first, second, third
+    global count, first, second, third, chat_text_1, chat_text_2
     count = 0
     global shown_users, chat_users, nick
     if len(users) != len(shown_users):
@@ -393,6 +393,12 @@ def users_update(users: list):
         chat_users = shown_users.copy()
         if len(shown_users) == 3:
             sd.config(state=tk.NORMAL)
+            chat_text_1.config(state=tk.NORMAL)
+            chat_text_2.config(state=tk.NORMAL)
+            chat_text_1.insert(tk.END, 'SYSTEM> Соединение установлено\n')
+            chat_text_2.insert(tk.END, 'SYSTEM> Соединение установлено\n')
+            chat_text_1.config(state=tk.DISABLED)
+            chat_text_2.config(state=tk.DISABLED)
             status.config(text='Статус: Соединение установлено', fg='green')
         del chat_users[chat_users.index(nick)]
 
